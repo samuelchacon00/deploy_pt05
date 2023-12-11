@@ -1,0 +1,10 @@
+version: 3
+
+services:
+  fastapi:
+    image: image-fastapi
+    build: .
+    container_name: fastapi-application
+    ports:
+      - "10000:10000"
+      
