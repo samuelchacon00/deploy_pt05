@@ -1,6 +1,8 @@
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 from fastapi import FastAPI
+from memory_profiler import profile
+
 
 def set_year(string):    
     if string=="-1":
@@ -44,6 +46,7 @@ games=pd.read_csv(data_dir+"steam_games.csv",sep=";")
 reviews=pd.read_csv(data_dir+"user_reviews.csv",sep=";")
 items=pd.read_parquet(data_dir+"users_items.parquet")
 
+@profile
 @app.get("/PlayTimeGenre/{genero}")
 def PlayTimeGenre(genero:str):
     items["item_id"]=items["item_id"].apply(lambda x:int(x))
@@ -60,6 +63,7 @@ def PlayTimeGenre(genero:str):
     
     return {"Año de lanzamiento con más horas jugadas para Género "+genero : int(indices[0])}
 
+@profile
 @app.get("/UserForGenre/{genero}")
 def UserForGenre(genero:str):
 
@@ -83,6 +87,7 @@ def UserForGenre(genero:str):
         return {"No se econtro el genero":-1}
     return dicc
 
+@profile
 @app.get("/UsersRecommend/{year}")
 def UsersRecommend(year:int):
     mask=~(reviews["posted"]=="Unknow")
@@ -106,6 +111,7 @@ def UsersRecommend(year:int):
 
     return lista
 
+@profile
 @app.get("/UsersNotRecommend/{year}")
 def UsersNotRecommend(year:int):
     mask=~(reviews["posted"]=="Unknow")
@@ -133,6 +139,7 @@ def UsersNotRecommend(year:int):
 
     return lista
 
+@profile
 @app.get("/sentiment_analysis/{year}")
 def sentiment_analysis(year:int):
     mask=~(reviews["posted"]=="Unknow")
@@ -152,6 +159,7 @@ def sentiment_analysis(year:int):
             "Neutral":int(tabla[tabla["sentiment_analysis"]==1].reset_index()["count"][0]),
             "Positive":int(tabla[tabla["sentiment_analysis"]==2].reset_index()["count"][0])}
 
+@profile
 @app.get("/recomendacion_juego/{id}")
 def recomendacion_juego(id:int):
     mask=games["item_id"]==id
@@ -177,3 +185,7 @@ def recomendacion_juego(id:int):
     juegos_recomendados = [games.at[i,"app_name"] for i in indices_top_similares]
 
     return juegos_recomendados
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
