@@ -1,8 +1,11 @@
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 from fastapi import FastAPI
+<<<<<<< HEAD
 from datetime import datetime
 import ast
+=======
+>>>>>>> a77b61875f10ffc75cfb30a1b17acfa2309f9545
 
 def set_year(string):    
     if string=="-1":
@@ -70,7 +73,10 @@ games=pd.read_csv(data_dir+"steam_games.csv",sep=";")
 reviews=pd.read_csv(data_dir+"user_reviews.csv",sep=";")
 items=pd.read_parquet(data_dir+"users_items.parquet")
 
+<<<<<<< HEAD
 #probar con Action
+=======
+>>>>>>> a77b61875f10ffc75cfb30a1b17acfa2309f9545
 @app.get("/PlayTimeGenre/{genero}")
 def PlayTimeGenre(genero:str):
     games=pd.read_csv(data_dir+"steam_games.csv",sep=";")
@@ -89,7 +95,10 @@ def PlayTimeGenre(genero:str):
     
     return {"Año de lanzamiento con más horas jugadas para Género "+genero : int(indices[0])}
 
+<<<<<<< HEAD
 #probar con adventure
+=======
+>>>>>>> a77b61875f10ffc75cfb30a1b17acfa2309f9545
 @app.get("/UserForGenre/{genero}")
 def UserForGenre(genero:str):
     games=pd.read_csv(data_dir+"steam_games.csv",sep=";")
@@ -105,6 +114,7 @@ def UserForGenre(genero:str):
     b_user=tabla.groupby(["user_id"]).agg({"playtime_forever":"sum"}).reset_index()
     usuario=b_user["user_id"][0]
 
+<<<<<<< HEAD
     respuesta={"Usuario con más horas jugadas para Género X".replace("X",genero):usuario}
 
     mask=tabla["user_id"]==usuario
@@ -119,6 +129,8 @@ def UserForGenre(genero:str):
     return respuesta
 
 #probar con 2015
+=======
+>>>>>>> a77b61875f10ffc75cfb30a1b17acfa2309f9545
 @app.get("/UsersRecommend/{year}")
 def UsersRecommend(year:int):
     games=pd.read_csv(data_dir+"steam_games.csv",sep=";")
@@ -130,7 +142,24 @@ def UsersRecommend(year:int):
     reviews["positivos"]=reviews["sentiment_analysis"].apply(lambda x:definir_polaridad(x,"positiva"))
     tabla=pd.merge(reviews[mask][["year","item_id","positivos","recommend"]],games[["item_id","app_name"]],on="item_id",how="inner")
     
+<<<<<<< HEAD
     tabla=tabla.groupby(["year","app_name"]).agg({"recommend":"sum","positivos":"sum"}).reset_index().sort_values(by=["positivos","recommend"],ascending=False).reset_index()
+=======
+    inter=pd.merge(games[["item_id","app_name"]],tabla,on="item_id",how="inner")
+    inter=inter.sort_values(by="recommend",ascending=False).reset_index()["app_name"][:3]
+
+    puesto="Puesto X"
+    lista=[]
+    for i in range(3):
+        lista.append({puesto.replace("X",str(i+1)):inter[i]})
+
+    return lista
+
+@app.get("/UsersNotRecommend/{year}")
+def UsersNotRecommend(year:int):
+    mask=~(reviews["posted"]=="Unknow")
+    #print(reviews.isna().sum())
+>>>>>>> a77b61875f10ffc75cfb30a1b17acfa2309f9545
     
     top=[]
     text="Puesto X"
@@ -149,7 +178,24 @@ def UsersWorstDeveloper(year:int):
     games=pd.read_csv(data_dir+"steam_games.csv",sep=";")
     reviews=pd.read_csv(data_dir+"user_reviews.csv",sep=";")
 
+<<<<<<< HEAD
     games["item_id"]=games["id"]
+=======
+    puesto="Puesto X"
+    lista=[]
+    for i in range(3):
+        lista.append({puesto.replace("X",str(i+1)):inter[i]})
+
+    return lista
+
+@app.get("/sentiment_analysis/{year}")
+def sentiment_analysis(year:int):
+    mask=~(reviews["posted"]=="Unknow")
+
+    reviews["year"]=reviews[mask]["posted"].apply(lambda x:int(x.split("/")[2]))
+    reviews["year"].fillna(-1,inplace=True)
+    reviews["year"]=reviews["year"].apply(lambda x:int(x))
+>>>>>>> a77b61875f10ffc75cfb30a1b17acfa2309f9545
 
     reviews["year"]=reviews["posted"].apply(lambda x:get_year_1(x))
     mask=reviews["year"]==year
@@ -187,7 +233,10 @@ def sentiment_analysis(developer:str):
             "Neutral":int(tabla[tabla[colum_name]==1][colum_name].count()),
             "Positive":int(tabla[tabla[colum_name]==2][colum_name].count())}
 
+<<<<<<< HEAD
 #probar con 80
+=======
+>>>>>>> a77b61875f10ffc75cfb30a1b17acfa2309f9545
 @app.get("/recomendacion_juego/{id}")
 def recomendacion_juego(id:int):
     games=pd.read_csv(data_dir+"steam_games.csv",sep=";")
@@ -220,9 +269,15 @@ def recomendacion_juego(id:int):
 
     return juegos_recomendados
 
+<<<<<<< HEAD
 print(PlayTimeGenre("freesdgf"))
 print(UserForGenre("free to play"))
 print(UsersRecommend(2015))
 print(UsersWorstDeveloper(2015))
 print(sentiment_analysis("ubisoft"))
 print(recomendacion_juego(80))
+=======
+"""if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)"""
+>>>>>>> a77b61875f10ffc75cfb30a1b17acfa2309f9545
