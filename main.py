@@ -220,9 +220,9 @@ def recomendacion_juego(id:int):
 
     return juegos_recomendados
 
-print(PlayTimeGenre("freesdgf"))
+"""print(PlayTimeGenre("freesdgf"))
 print(UserForGenre("free to play"))
 print(UsersRecommend(2015))
 print(UsersWorstDeveloper(2015))
 print(sentiment_analysis("ubisoft"))
-print(recomendacion_juego(80))
+print(recomendacion_juego(80))"""
