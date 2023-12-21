@@ -4,39 +4,6 @@ from fastapi import FastAPI
 from datetime import datetime
 import ast
 
-def set_year(string):    
-    if string=="-1":
-        return -1
-    string=string.split("-")
-
-    return int(string[0])
-
-def isfloat(valor):
-    try:
-        float(valor)
-        return True
-    except:
-        return False
-
-def generar_unicos(df,campo):
-    unicos=[]
-    for i in df.index:
-        for n in df.at[i,campo]:
-            if n not in unicos:
-                unicos.append(n)
-
-    dicc={}
-    for i in range(len(unicos)):
-        dicc[unicos[i]]=i
-
-    return dicc
-
-def normalizar(lista,unicos):
-    norma=[]
-    for i in range(len(lista)):
-        norma.append(unicos[lista[i]])
-    
-    return norma
 
 def get_year_1(fecha):
     if isinstance(fecha,str):
@@ -120,6 +87,7 @@ def UserForGenre(genero:str):
     return dicc
 
 #probar con 2015
+@app.get("/UsersRecommend/{year}")
 def UsersRecommend(year:int):
     games=pd.read_csv(data_dir+"steam_games.csv",sep=";")
     reviews=pd.read_csv(data_dir+"user_reviews.csv",sep=";")
@@ -144,6 +112,7 @@ def UsersRecommend(year:int):
     return lista
 
 #probar con 2015
+@app.get("/UsersNotRecommend/{year}")
 def UsersNotRecommend(year:int):
     games=pd.read_csv(data_dir+"steam_games.csv",sep=";")
     reviews=pd.read_csv(data_dir+"user_reviews.csv",sep=";")
@@ -189,7 +158,7 @@ def sentiment_analysis(year:int):
             "Neutral":int(tabla[tabla[colum_name]==1][colum_name].count()),
             "Positive":int(tabla[tabla[colum_name]==2][colum_name].count())}
 
-#probar con 643980
+#probar con 643980 o 220
 @app.get("/recomendacion_juego/{id}")
 def recomendacion_juego(id:int):
     games=pd.read_csv(data_dir+"steam_games.csv",sep=";")
@@ -212,21 +181,3 @@ def recomendacion_juego(id:int):
     juegos_recomendados=[games.at[i,"app_name"] for i in indices_top_similares]
 
     return juegos_recomendados
-
-<<<<<<< HEAD
-print(PlayTimeGenre("action"))
-print(UserForGenre("adventure"))
-print(UsersRecommend(2015))
-print(UsersNotRecommend(2015))
-print(sentiment_analysis(2015))
-print(recomendacion_juego(220))
-
-
-=======
-"""print(PlayTimeGenre("freesdgf"))
-print(UserForGenre("free to play"))
-print(UsersRecommend(2015))
-print(UsersWorstDeveloper(2015))
-print(sentiment_analysis("ubisoft"))
-print(recomendacion_juego(80))"""
->>>>>>> origin/master
