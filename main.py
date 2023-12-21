@@ -46,7 +46,7 @@ def get_year_1(fecha):
     
 def get_year_2(fecha):
     if isinstance(fecha,str):
-        return fecha.split("-")[0]
+        return int(fecha.split("-")[0])
     else:
         return fecha
     
@@ -62,13 +62,11 @@ def definir_polaridad(valor,polaridad="negativa"):
         else:
             return 0
 
+
 app = FastAPI()
 
 data_dir="datasets/"
 
-games=pd.read_csv(data_dir+"steam_games.csv",sep=";")
-reviews=pd.read_csv(data_dir+"user_reviews.csv",sep=";")
-items=pd.read_parquet(data_dir+"users_items.parquet")
 
 #probar con Action
 @app.get("/PlayTimeGenre/{genero}")
@@ -98,88 +96,92 @@ def UserForGenre(genero:str):
     mask1=(games["genres"].apply(lambda x:genero.lower() in x.lower())) | (games["tags"].apply(lambda x:genero.lower() in x.lower()))
     games["item_id"]=games["id"]
 
+    if not len(games[mask1]):
+        return {"No se encontro en el genero":-1}
+
     games["year"]=games["release_date"].apply(lambda x:get_year_2(x))
-    mask2=mask1 & (~games["release_date"].isna())
+    mask2=mask1 & ~(games["year"].isna())
     
-    tabla=pd.merge(games[mask2][["year","item_id","release_date"]],items[["item_id","playtime_forever","user_id"]],on="item_id",how="inner")
-    b_user=tabla.groupby(["user_id"]).agg({"playtime_forever":"sum"}).reset_index()
-    usuario=b_user["user_id"][0]
+    tabla=pd.merge(games[mask2][["year","item_id","release_date"]],items[["item_id","playtime_forever","user_id"]],on="item_id",how="right")
+    tabla=tabla.groupby(["user_id","year"]).agg({"playtime_forever":"sum"}).reset_index().sort_values(by="playtime_forever",ascending=False).reset_index()
+    
+    if not len(tabla):
+        return {"no se encontraron usuarios que jueguen el genero "+genero:-1}
 
-    respuesta={"Usuario con más horas jugadas para Género X".replace("X",genero):usuario}
+    user=tabla.at[0,"user_id"]
 
-    mask=tabla["user_id"]==usuario
-    tabla=tabla[mask].groupby(["year"]).agg({"playtime_forever":"sum"}).sort_values(by="year",ascending=False).reset_index()
+    tabla=tabla[tabla["user_id"]==user].sort_values(by="year",ascending=False)
 
-    lista=[]
+    dicc={"Usuario con más horas jugadas para Género X".replace("X",genero):user,"Horas jugadas":[]}    
+    
     for i in tabla.index:
-        lista.append({"Año":tabla.at[i,"year"],"Horas":tabla.at[i,"playtime_forever"]})
+        dicc["Horas jugadas"].append({"Año":tabla.at[i,"year"],"Horas":tabla.at[i,"playtime_forever"]})
 
-    respuesta["Horas jugadas"]=lista
-
-    return respuesta
+    return dicc
 
 #probar con 2015
-@app.get("/UsersRecommend/{year}")
 def UsersRecommend(year:int):
     games=pd.read_csv(data_dir+"steam_games.csv",sep=";")
     reviews=pd.read_csv(data_dir+"user_reviews.csv",sep=";")
-
+    
     reviews["year"]=reviews["posted"].apply(lambda x:get_year_1(x))
     mask=reviews["year"]==year
     games["item_id"]=games["id"]
-    reviews["positivos"]=reviews["sentiment_analysis"].apply(lambda x:definir_polaridad(x,"positiva"))
-    tabla=pd.merge(reviews[mask][["year","item_id","positivos","recommend"]],games[["item_id","app_name"]],on="item_id",how="inner")
+    games.drop(columns=["id"],inplace=True)
+    tab=pd.merge(reviews[mask][["item_id","user_id","recommend","sentiment_analysis"]],games[["item_id","app_name"]],on="item_id",how="left")
+    tab["negativos"]=tab["sentiment_analysis"].apply(lambda x:definir_polaridad(x,polaridad="positiva"))
+    tab=list(tab.groupby(["app_name"]).agg({"recommend":"sum","negativos":"sum"}).reset_index().sort_values(by=["recommend","negativos"],ascending=False)["app_name"])
     
-    tabla=tabla.groupby(["year","app_name"]).agg({"recommend":"sum","positivos":"sum"}).reset_index().sort_values(by=["positivos","recommend"],ascending=False).reset_index()
-    
-    top=[]
     text="Puesto X"
-    if(len(tabla)>=3):
-        for i in range(0,3):
-            top.append({text.replace("X",str(i+1),):tabla.at[i,"app_name"]})
+    lista=[]
+    if len(tab)>=3:
+        for i in range(3):
+            lista.append({text.replace("X",str(i+1)):tab[i]})
     else:
-        for i in range(0,len(tabla)):
-            top.append({text.replace("X",str(i+1),):tabla.at[i,"app_name"]})
+        for i in range(tab):
+            lista.append({text.replace("X",str(i+1)):tab[i]})
 
-    return top
+    return lista
 
 #probar con 2015
-@app.get("/UsersWorstDeveloper/{year}")
-def UsersWorstDeveloper(year:int):
+def UsersNotRecommend(year:int):
     games=pd.read_csv(data_dir+"steam_games.csv",sep=";")
     reviews=pd.read_csv(data_dir+"user_reviews.csv",sep=";")
-
-    games["item_id"]=games["id"]
-
+    
     reviews["year"]=reviews["posted"].apply(lambda x:get_year_1(x))
     mask=reviews["year"]==year
-
-    tabla=pd.merge(games[["item_id","app_name","developer"]],reviews[mask][["item_id","recommend","sentiment_analysis","year"]],on="item_id",how="inner")
-    tabla["negativos"]=tabla["sentiment_analysis"].apply(lambda x:definir_polaridad(x))
-    tabla["recommend"]=~tabla["recommend"]
-    tabla=tabla.groupby(["developer"]).agg({"negativos":"sum","recommend":"sum"}).reset_index().sort_values(by="negativos",ascending=False)
-    text="Puesto X"
-    top=[]
-
-    for i in range(0,3):
-        top.append({text.replace("X",str(i+1)):tabla.at[i,"developer"]})
+    games["item_id"]=games["id"]
+    games.drop(columns=["id"],inplace=True)
+    tab=pd.merge(reviews[mask][["item_id","user_id","recommend","sentiment_analysis"]],games[["item_id","app_name"]],on="item_id",how="left")
+    tab["negativos"]=tab["sentiment_analysis"].apply(lambda x:definir_polaridad(x,polaridad="negativa"))
+    tab["recommend"]=tab["recommend"].apply(lambda x:not x)
+    tab=list(tab.groupby(["app_name"]).agg({"recommend":"sum","negativos":"sum"}).reset_index().sort_values(by=["recommend","negativos"],ascending=False)["app_name"])
     
-    return top
+    text="Puesto X"
+    lista=[]
+    if len(tab)>=3:
+        for i in range(3):
+            lista.append({text.replace("X",str(i+1)):tab[i]})
+    else:
+        for i in range(tab):
+            lista.append({text.replace("X",str(i+1)):tab[i]})
 
-#probar con ubisoft
+    return lista
+
+#probar con 2015
 @app.get("/sentiment_analysis/{year}")
-def sentiment_analysis(developer:str):
+def sentiment_analysis(year:int):
     games=pd.read_csv(data_dir+"steam_games.csv",sep=";")
     reviews=pd.read_csv(data_dir+"user_reviews.csv",sep=";")
 
     games["item_id"]=games["id"]
     games.drop(columns=["id"],inplace=True)
-    mask=games["developer"].apply(lambda x:x.lower()==developer.lower())
+    games["year"]=games["release_date"].apply(lambda x:get_year_2(x))
+    mask=games["year"]==year
+    tabla=pd.merge(games[mask][["item_id"]],reviews[["item_id","sentiment_analysis"]],on="item_id",how="right")
 
-    tabla=pd.merge(games[mask][["developer","item_id"]],reviews[["item_id","sentiment_analysis"]],on="item_id",how="inner")
-    
     if not len(tabla):
-        return {"No se encontro la empresa desarrolladora":-1}    
+        return {"No se encontro la año de lanzamiento":-1}    
 
     colum_name="sentiment_analysis"
  
@@ -187,11 +189,10 @@ def sentiment_analysis(developer:str):
             "Neutral":int(tabla[tabla[colum_name]==1][colum_name].count()),
             "Positive":int(tabla[tabla[colum_name]==2][colum_name].count())}
 
-#probar con 80
+#probar con 643980
 @app.get("/recomendacion_juego/{id}")
 def recomendacion_juego(id:int):
     games=pd.read_csv(data_dir+"steam_games.csv",sep=";")
-    
     mask=games["id"]==id
 
     if not len(games[mask]):
@@ -199,30 +200,24 @@ def recomendacion_juego(id:int):
 
     games["tags"]=games["tags"].apply(lambda x:ast.literal_eval(x))
     games["genres"]=games["genres"].apply(lambda x:ast.literal_eval(x))
-
-    df_genres = games.explode('genres')[['genres']]
-    df_tags = games.explode('tags')[['tags']]
-
-    df_genres_encoded = pd.get_dummies(df_genres['genres']).groupby(df_genres.index).max()
-    df_tags_encoded = pd.get_dummies(df_tags['tags']).groupby(df_tags.index).max()
-
-    tabla = pd.concat([df_genres_encoded, df_tags_encoded], axis=1)
-
-    similarities=cosine_similarity(tabla)
-    
-    indice_juego = games[mask].index[0]
-
-    similitudes_con_juego = similarities[indice_juego]
-
-    indices_top_similares = similitudes_con_juego.argsort()[::-1][1:5+1]
-    
-    juegos_recomendados = [games.at[i,"app_name"] for i in indices_top_similares]
+    df_genres=games.explode('genres')[['genres']]
+    df_tags=games.explode('tags')[['tags']]
+    df_genres_encoded=pd.get_dummies(df_genres['genres']).groupby(df_genres.index).max()
+    df_tags_encoded=pd.get_dummies(df_tags['tags']).groupby(df_tags.index).max()
+    tabla=pd.concat([df_genres_encoded, df_tags_encoded], axis=1)
+    similitudes=cosine_similarity(tabla)
+    indice_juego=games[mask].index[0]
+    similitudes_con_juego=similitudes[indice_juego]
+    indices_top_similares=similitudes_con_juego.argsort()[::-1][1:5+1]
+    juegos_recomendados=[games.at[i,"app_name"] for i in indices_top_similares]
 
     return juegos_recomendados
 
-print(PlayTimeGenre("freesdgf"))
-print(UserForGenre("free to play"))
+print(PlayTimeGenre("action"))
+print(UserForGenre("adventure"))
 print(UsersRecommend(2015))
-print(UsersWorstDeveloper(2015))
-print(sentiment_analysis("ubisoft"))
-print(recomendacion_juego(80))
+print(UsersNotRecommend(2015))
+print(sentiment_analysis(2015))
+print(recomendacion_juego(220))
+
+
