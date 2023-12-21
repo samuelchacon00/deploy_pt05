@@ -213,20 +213,4 @@ def recomendacion_juego(id:int):
 
     return juegos_recomendados
 
-<<<<<<< HEAD
-print(PlayTimeGenre("action"))
-print(UserForGenre("adventure"))
-print(UsersRecommend(2015))
-print(UsersNotRecommend(2015))
-print(sentiment_analysis(2015))
-print(recomendacion_juego(220))
 
-
-=======
-"""print(PlayTimeGenre("freesdgf"))
-print(UserForGenre("free to play"))
-print(UsersRecommend(2015))
-print(UsersWorstDeveloper(2015))
-print(sentiment_analysis("ubisoft"))
-print(recomendacion_juego(80))"""
->>>>>>> origin/master
