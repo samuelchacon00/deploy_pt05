@@ -181,3 +181,8 @@ def recomendacion_juego(id:int):
     juegos_recomendados=[games.at[i,"app_name"] for i in indices_top_similares]
 
     return juegos_recomendados
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> 81d3228cc4d12aa7eb7bcab41cabf41f6ddceca4
